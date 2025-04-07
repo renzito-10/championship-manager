@@ -1,3 +1,4 @@
+export const runtime = 'nodejs'
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Trophy, Users, Calendar, ArrowRight } from "lucide-react"
