@@ -1,0 +1,134 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  password      String
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  championships       Championship[]
+  participations      ChampionshipParticipant[]
+  predictions         Prediction[]
+}
+
+model Championship {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  startDate   DateTime
+  endDate     DateTime
+  type        String   // "league", "knockout", "groups"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  creatorId   String
+  creator     User     @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  
+  teams       Team[]
+  matches     Match[]
+  participants ChampionshipParticipant[]
+  rules       PredictionRule?
+}
+
+model ChampionshipParticipant {
+  id             String       @id @default(cuid())
+  userId         String
+  championshipId String
+  joinedAt       DateTime     @default(now())
+  points         Int          @default(0)
+  correctResults Int          @default(0)
+  exactScores    Int          @default(0)
+  
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  championship   Championship @relation(fields: [championshipId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, championshipId])
+}
+
+model Team {
+  id             String       @id @default(cuid())
+  name           String
+  abbreviation   String?
+  logo           String?
+  championshipId String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  
+  championship   Championship @relation(fields: [championshipId], references: [id], onDelete: Cascade)
+  homeMatches    Match[]      @relation("HomeTeam")
+  awayMatches    Match[]      @relation("AwayTeam")
+  players        Player[]
+}
+
+model Player {
+  id        String   @id @default(cuid())
+  name      String
+  position  String?
+  number    Int?
+  teamId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+}
+
+model Match {
+  id             String       @id @default(cuid())
+  homeTeamId     String
+  awayTeamId     String
+  homeScore      Int?
+  awayScore      Int?
+  date           DateTime
+  status         String       // "upcoming", "live", "completed"
+  championshipId String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  
+  homeTeam       Team         @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam       Team         @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  championship   Championship @relation(fields: [championshipId], references: [id], onDelete: Cascade)
+  predictions    Prediction[]
+}
+
+model Prediction {
+  id        String   @id @default(cuid())
+  userId    String
+  matchId   String
+  homeScore Int
+  awayScore Int
+  points    Int?     // Points earned for this prediction
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  match     Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, matchId])
+}
+
+model PredictionRule {
+  id                 String       @id @default(cuid())
+  pointsCorrectResult Int         @default(3)
+  pointsExactScore   Int          @default(5)
+  deadline           String       @default("kickoff") // "kickoff", "15min", "30min", "1hour", "day"
+  championshipId     String       @unique
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  
+  championship       Championship @relation(fields: [championshipId], references: [id], onDelete: Cascade)
+}
+
